@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "test": "jest --runInBand"
   },
   "author": "",
   "license": "ISC",
@@ -18,5 +19,14 @@
     "mongoose": "^8.7.1",
     "uuid": "^11.0.2"
   },
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "jest": "^30.5.2",
+    "mongodb-memory-server": "^11.4.0",
+    "supertest": "^7.3.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 60000
+  }
 }

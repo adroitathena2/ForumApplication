@@ -9,7 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 const data_posts = require('./data.js');
 
 const express_app = express();
-express_app.use(cors({ credentials: true, origin: 'http://localhost:3000' }));
+express_app.use(cors({ credentials: true, origin: process.env.CORS_ORIGIN || 'http://localhost:3000' }));
 express_app.use(express.json());
 express_app.use(cookieParser());
 
@@ -122,7 +122,11 @@ express_app.post("/deletepost", async (req, res) => {
 	}
 
 	if (authUser(req)) {
-		if ("postID" in req.body) {
+		if (!("postID" in req.body)) {
+			res.status(400).send("!DEV");
+			return;
+		}
+		{
 			let fnd = await Post.findOne({ id: req.body.postID });
 			if (fnd) {			
 				if (req.cookies.username == fnd.author) {
@@ -151,7 +155,11 @@ express_app.post("/createpostreply", async (req, res) => {
 	}
 
 	if (authUser(req)) {
-		if (("postID" in req.body) && ("replyBody" in req.body)) {
+		if (!(("postID" in req.body) && ("replyBody" in req.body))) {
+			res.status(400).send("!DEV");
+			return;
+		}
+		{
 			let fnd = await Post.findOne({ id: req.body.postID });
 			if (fnd) {
 				let curDate = new Date();
@@ -263,7 +271,8 @@ express_app.post("/logout", async (req, res) => {
 	}
 
 	if (authUser(req)) {
-		req.app.locals.sessData[req.body.username] = null;
+		// Invalidate the session of the logged-in user (identified by cookie, not request body)
+		req.app.locals.sessData[req.cookies.username] = null;
 		res.clearCookie("session");
 		res.clearCookie("username");
 		res.sendStatus(200);
@@ -272,14 +281,27 @@ express_app.post("/logout", async (req, res) => {
 	}
 });
 
-async function init() {
-	await mongoose.connect("mongodb://127.0.0.1:27017/?directConnection=true");
+const MONGO_URL = process.env.MONGO_URL || "mongodb://127.0.0.1:27017/?directConnection=true";
+const PORT = process.env.PORT || 42370;
+
+async function seed() {
 	await Post.deleteMany({});
 	await User.deleteMany({});
 	await Post.insertMany(data_posts(23));
 }
-init().catch((err) => console.log(err));
 
-express_app.listen(42370, () => {
-	console.log("ready on http://localhost:42370");
-});
+async function init() {
+	await mongoose.connect(MONGO_URL);
+	await seed();
+}
+
+// Only connect and listen when run directly (`node app.js`), so tests can import the app
+if (require.main === module) {
+	init().catch((err) => console.log(err));
+
+	express_app.listen(PORT, () => {
+		console.log("ready on http://localhost:" + PORT);
+	});
+}
+
+module.exports = { app: express_app, Post, User, seed };
